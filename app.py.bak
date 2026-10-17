@@ -1,0 +1,295 @@
+"""
+ScamShield AI — Verify Before You Pay
+Hackathon Prototype (Phase 1: Basic Interface & Mock Detection)
+
+This application helps users detect impersonation scams before sending money.
+"""
+
+import streamlit as st
+
+# ==============================================================================
+# 1. PAGE CONFIGURATION & CYBERSECURITY DASHBOARD STYLING
+# ==============================================================================
+st.set_page_config(
+    page_title="ScamShield AI — Verify Before You Pay",
+    page_icon="🛡️",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Custom CSS for a modern cybersecurity dashboard look
+st.markdown("""
+    <style>
+    /* Main container styling */
+    .main-header {
+        font-size: 2.2rem;
+        font-weight: 800;
+        color: #1E293B;
+        margin-bottom: 0.2rem;
+    }
+    .sub-header {
+        font-size: 1.05rem;
+        color: #64748B;
+        margin-bottom: 1.5rem;
+        line-height: 1.5;
+    }
+    
+    /* Demo badge notice */
+    .demo-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        background-color: #FEF3C7;
+        color: #92400E;
+        font-weight: 600;
+        font-size: 0.82rem;
+        border-radius: 6px;
+        border: 1px solid #FCD34D;
+        margin-bottom: 1rem;
+    }
+    
+    /* Result card container */
+    .result-card {
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin-top: 1rem;
+        margin-bottom: 1rem;
+        border: 1px solid #E2E8F0;
+        background-color: #F8FAFC;
+    }
+    
+    /* Risk level pill badges */
+    .badge-high {
+        background-color: #FEE2E2;
+        color: #991B1B;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-weight: 700;
+        display: inline-block;
+        border: 1px solid #FCA5A5;
+    }
+    .badge-medium {
+        background-color: #FEF3C7;
+        color: #92400E;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-weight: 700;
+        display: inline-block;
+        border: 1px solid #FCD34D;
+    }
+    .badge-low {
+        background-color: #DCFCE7;
+        color: #166534;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-weight: 700;
+        display: inline-block;
+        border: 1px solid #86EFAC;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+
+# ==============================================================================
+# 2. SESSION STATE MANAGEMENT (For Example Buttons)
+# ==============================================================================
+# Streamlit re-runs the script on every interaction. We use 'st.session_state'
+# to remember the user's message when they click one of the quick test buttons.
+if "message_input" not in st.session_state:
+    st.session_state["message_input"] = ""
+
+
+def load_example(example_text: str):
+    """Callback to update the text area with a pre-set example message."""
+    st.session_state["message_input"] = example_text
+
+
+# ==============================================================================
+# 3. MOCK ANALYSIS LOGIC (Simulated Detection Engine)
+# ==============================================================================
+def mock_analyze_message(text: str) -> dict:
+    """
+    Simulates scam detection using simple keyword matching.
+    NOTE: In Phase 2, this will be replaced with real Google Gemini AI analysis.
+    """
+    lower_text = text.lower()
+    
+    # Common scam indicators
+    impersonation_keywords = ["mom", "mum", "dad", "son", "daughter", "friend", "broke my phone", "lost phone", "new number", "friend's phone"]
+    urgency_keywords = ["urgent", "urgently", "immediately", "right now", "emergency", "asap", "hospital", "deadline"]
+    money_keywords = ["pay", "money", "transfer", "wire", "gift card", "crypto", "bill", "dollars", "upi", "venmo", "bank account", "fee"]
+    link_keywords = ["http://", "https://", "bit.ly", "click here", "link"]
+
+    has_impersonation = any(k in lower_text for k in impersonation_keywords)
+    has_urgency = any(k in lower_text for k in urgency_keywords)
+    has_money = any(k in lower_text for k in money_keywords)
+    has_link = any(k in lower_text for k in link_keywords)
+
+    # Classify Risk Level based on detected traits
+    if (has_impersonation and has_money) or (has_urgency and has_money):
+        return {
+            "risk_level": "High",
+            "badge_class": "badge-high",
+            "icon": "🚨",
+            "summary": "This message exhibits strong characteristics of an urgent impersonation scam.",
+            "warning_signs": [
+                "Claims to be a relative/friend from an unfamiliar phone number.",
+                "Creates high pressure and urgency to prevent you from thinking critically.",
+                "Requests direct funds (wire, payment app, or bill payment) to an unverified account.",
+                "Discourages or bypasses normal verification (e.g., claiming the original phone is broken)."
+            ],
+            "verification_steps": [
+                "DO NOT send money immediately.",
+                "Call your friend or relative on their KNOWN original phone number, not the number that sent this message.",
+                "Ask a private question that only the real person would know (e.g., 'What is our dog's middle name?').",
+                "Contact another family member or mutual friend to verify if an emergency actually occurred."
+            ]
+        }
+    elif has_money or has_link or has_urgency:
+        return {
+            "risk_level": "Medium",
+            "badge_class": "badge-medium",
+            "icon": "⚠️",
+            "summary": "This message contains requests or links that warrant caution before responding.",
+            "warning_signs": [
+                "Contains a payment request or an unverified external link.",
+                "Uses suggestive language to prompt quick action.",
+                "Sender identity cannot be confirmed solely from the message context."
+            ],
+            "verification_steps": [
+                "Inspect any links carefully before clicking (look for subtle misspellings in the domain).",
+                "Verify payment requests through the official platform or app directly, rather than via SMS links.",
+                "Confirm the sender's identity through an independent communication channel."
+            ]
+        }
+    else:
+        return {
+            "risk_level": "Low",
+            "badge_class": "badge-low",
+            "icon": "✅",
+            "summary": "No common impersonation or financial scam patterns were detected in this message.",
+            "warning_signs": [
+                "No artificial urgency detected.",
+                "No requests for money, gift cards, or sensitive personal data."
+            ],
+            "verification_steps": [
+                "Even for low-risk messages, stay alert if the conversation suddenly pivots to asking for money or passwords."
+            ]
+        }
+
+
+# ==============================================================================
+# 4. USER INTERFACE (SIDEBAR & HEADER)
+# ==============================================================================
+# Sidebar with project background & hackathon info
+with st.sidebar:
+    st.markdown("### 🛡️ About ScamShield AI")
+    st.info(
+        "**The Problem:** Scammers impersonate family members claiming emergencies "
+        "('Hi Mum, I broke my phone!') to steal money.\n\n"
+        "**Our Solution:** ScamShield AI analyzes suspicious messages, highlights psychological red flags, "
+        "and guides you through safe verification steps."
+    )
+    
+    st.markdown("---")
+    st.markdown("### 🚀 Hackathon Roadmap")
+    st.markdown("- **Phase 1:** UI Prototype *(Active)*\n- **Phase 2:** Gemini AI Integration\n- **Phase 3:** Verification Checklist\n- **Phase 4:** TinyFish Web Investigation")
+    
+    st.markdown("---")
+    st.caption("ScamShield AI • Hackathon Edition")
+
+# Main Header
+st.markdown('<div class="main-header">🛡️ ScamShield AI — Verify Before You Pay</div>', unsafe_allow_html=True)
+st.markdown(
+    '<div class="sub-header">'
+    'Protect yourself and your loved ones from emergency impersonation scams. '
+    'Paste any suspicious message below to detect warning signs before you transfer funds.'
+    '</div>', 
+    unsafe_allow_html=True
+)
+
+st.markdown('<div class="demo-badge">⚙️ PHASE 1 DEMO MODE: Powered by mock rule-based detection</div>', unsafe_allow_html=True)
+
+
+# ==============================================================================
+# 5. QUICK EXAMPLE TEST BUTTONS
+# ==============================================================================
+st.markdown("#### 🧪 Try Sample Messages:")
+col1, col2, col3 = st.columns(3)
+
+# Example 1: Classic High-Risk "Hi Mum" scam
+ex1_text = "Hi Mum, dropped my phone in the sink and it's dead. Using my friend's phone. Can you urgently pay a $450 bill for me? I'll pay you back tonight! Transfer here: 9876-5432-10"
+# Example 2: Medium-Risk suspicious delivery link
+ex2_text = "Your parcel delivery #US8921 could not be completed due to an invalid postal code. Please update your address and pay the $1.50 fee within 24h: https://track-parcel-express.com"
+# Example 3: Low-Risk normal message
+ex3_text = "Hey Alex! Are we still meeting for lunch at 1 PM tomorrow at the cafe downtown? Let me know if that time works for you."
+
+with col1:
+    st.button("🚨 'Hi Mum' Scam (High)", on_click=load_example, args=(ex1_text,), use_container_width=True)
+with col2:
+    st.button("⚠️ Suspicious Link (Medium)", on_click=load_example, args=(ex2_text,), use_container_width=True)
+with col3:
+    st.button("✅ Normal Chat (Low)", on_click=load_example, args=(ex3_text,), use_container_width=True)
+
+st.write("")
+
+
+# ==============================================================================
+# 6. MESSAGE INPUT & ACTION BUTTON
+# ==============================================================================
+message_text = st.text_area(
+    label="Paste Suspicious Message Here:",
+    value=st.session_state["message_input"],
+    height=140,
+    placeholder="e.g. 'Hey Dad, this is my new number. I'm stuck at the station and need urgent money for a ticket...'"
+)
+
+analyze_clicked = st.button("🔍 Analyze Message", type="primary", use_container_width=True)
+
+
+# ==============================================================================
+# 7. ANALYSIS REPORT DISPLAY
+# ==============================================================================
+if analyze_clicked:
+    if not message_text.strip():
+        st.warning("⚠️ Please paste or type a message first, or click one of the sample buttons above.")
+    else:
+        # Run mock analysis
+        result = mock_analyze_message(message_text)
+        
+        st.markdown("---")
+        st.markdown("### 📊 Scam Analysis Report")
+        
+        # Prominent Demo Disclaimer
+        st.info("ℹ️ **DEMO RESULT:** This is a simulated prototype analysis. In Phase 2, this will be connected to real AI models for nuanced behavioral analysis.")
+
+        # Header metric row
+        res_col1, res_col2 = st.columns([1, 2])
+        
+        with res_col1:
+            st.markdown(f"#### Assessed Risk Level:")
+            st.markdown(
+                f"<div class='{result['badge_class']}'>{result['icon']} {result['risk_level'].upper()} RISK</div>",
+                unsafe_allow_html=True
+            )
+            st.write("")
+        
+        with res_col2:
+            st.markdown("#### Summary:")
+            st.write(result["summary"])
+
+        # Detailed Findings & Advice Columns
+        st.markdown("<div class='result-card'>", unsafe_allow_html=True)
+        flag_col, advice_col = st.columns(2)
+        
+        with flag_col:
+            st.markdown("#### 🚩 Warning Signs Detected")
+            for sign in result["warning_signs"]:
+                st.markdown(f"- {sign}")
+                
+        with advice_col:
+            st.markdown("#### 🛡️ Safe Verification Checklist")
+            for step in result["verification_steps"]:
+                st.markdown(f"- [ ] {step}")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        st.caption("🔒 Privacy Note: ScamShield AI does not store or share your pasted messages.")
